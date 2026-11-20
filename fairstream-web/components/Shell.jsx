@@ -19,7 +19,7 @@ export default function Shell({ children }) {
   useEffect(() => {
     if (!getToken()) { router.replace('/login'); return; }
     setRole(getRole()); setReady(true);
-    api('/me').then(setMe).catch(e => { if (e.message.includes('log in')) logout(); });
+    api('/me').then(setMe).catch(e => { if (e.message.includes('log in') || e.message.includes('suspended')) logout(); });
   }, [router]);
   useEffect(() => { if (!cur || !au.current) return; counted.current = false; au.current.src = audioSrc(cur); au.current.play().catch(() => {}); }, [cur?.track_id]); // eslint-disable-line
 
@@ -34,7 +34,8 @@ export default function Shell({ children }) {
   };
   if (!ready) return null;
   const nav = NAV.filter(([h]) => h !== '/upload' || role === 'artist');
-
+  const SHOW_BAR_ON = ['/discover']; // pages where the player bar is allowed to show
+  const showBar = cur && SHOW_BAR_ON.includes(path);
   return (
     <Ctx.Provider value={{ cur, playing, t, d, play, toggle, next, prev, seek, role, me, fmt }}>
       <div className="flex h-screen flex-col bg-bg md:flex-row">
@@ -49,7 +50,7 @@ export default function Shell({ children }) {
         <main className="flex-1 overflow-y-auto p-5 pb-32 md:p-8">{children}</main>
       </div>
       <audio ref={au} onTimeUpdate={onTime} onLoadedMetadata={e => setD(e.target.duration)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={next} />
-      <div className="fixed inset-x-0 bottom-0 border-t border-line bg-panel/95 px-4 py-2 backdrop-blur md:left-56">
+      <div className={`fixed inset-x-0 bottom-0 border-t border-line bg-panel/95 px-4 py-2 backdrop-blur md:left-56 ${showBar ? '' : 'hidden'}`}>
         <div className="mx-auto flex max-w-4xl items-center gap-3">
           <Cover track={cur} className="h-10 w-10" />
           <div className="min-w-0 flex-1"><div className="truncate text-sm">{cur?.title || 'Nothing playing'}</div><div className="truncate text-xs text-mute">{cur?.stage_name || 'Pick a song from Discover'}</div></div>

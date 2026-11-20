@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, saveSession } from '@/lib/api';
+import Link from 'next/link';
+import GoogleButton from '@/components/GoogleButton';
 import { btn, input, Msg } from '@/components/ui';
 
 export default function Login() {
@@ -10,8 +12,13 @@ export default function Login() {
   const set = k => e => setF({ ...f, [k]: e.target.value });
   const submit = async e => {
     e.preventDefault(); setErr(''); setBusy(true);
-    try { saveSession(await api(mode === 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: f })); router.push('/discover'); }
+    try { const d = await api(mode === 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: f }); saveSession(d); router.push(d.role === 'admin' ? '/admin' : '/discover'); }
     catch (x) { setErr(x.message); } finally { setBusy(false); }
+  };
+  const onGoogle = async credential => {
+    setErr('');
+    try { const d = await api('/auth/google', { method: 'POST', body: { credential, role: mode === 'register' ? f.role : 'listener', stageName: f.stageName } }); saveSession(d); router.push(d.role === 'admin' ? '/admin' : '/discover'); }
+    catch (x) { setErr(x.message); }
   };
   return (
     <div className="grid min-h-screen md:grid-cols-2">
@@ -29,12 +36,15 @@ export default function Login() {
           </div>
           <label className="block text-sm">Email<input required type="email" className={input} value={f.email} onChange={set('email')} /></label>
           <label className="block text-sm">Password<input required type="password" minLength={8} className={input} value={f.password} onChange={set('password')} /></label>
+          {mode === 'login' && <div className="text-right"><Link href="/forgot-password" className="text-xs text-mint hover:underline">Forgot password?</Link></div>}
           {mode === 'register' && (<>
             <div className="flex gap-2">{['listener', 'artist'].map(r => (<button type="button" key={r} onClick={() => setF({ ...f, role: r })} className={`flex-1 rounded-lg border px-3 py-2 text-sm capitalize ${f.role === r ? 'border-mint text-mint' : 'border-line text-mute'}`}>I'm a {r}</button>))}</div>
             {f.role === 'artist' && <label className="block text-sm">Stage name<input className={input} value={f.stageName} onChange={set('stageName')} /></label>}
           </>)}
           <Msg text={err} error />
           <button disabled={busy} className={`${btn} w-full`}>{busy ? 'Please wait...' : mode === 'login' ? 'Log in' : 'Create account'}</button>
+          <div className="flex items-center gap-3 text-xs text-mute"><div className="h-px flex-1 bg-line" />or<div className="h-px flex-1 bg-line" /></div>
+          <GoogleButton onCredential={onGoogle} />
         </form>
       </div>
     </div>
